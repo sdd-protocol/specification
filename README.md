@@ -1,6 +1,6 @@
 # Simple Device Drawing Protocol
 
-#### Current version: `3`
+#### Current version: `4`
 
 ## Terminology & Conventions
 
@@ -53,6 +53,16 @@ Finally, the consumer must listen on and the vendor must publish message acknowl
 ```
 
 (the establishment channel name postfixed with "`:ack`")
+
+##### Optional vendor response in `ack` messages
+
+The protocol supports optional response data from the vendor on the `:ack` channel, both as a future-proofing mechanism as well as a way to allow custom command implementation.
+
+Accordingly, this response data will consist of all bytes following the acknowledged sequence number and a single ASCII/UTF8 space (32d, 0x20). For example, if acknowledging sequence number 142 with a response of "Foo":
+
+```
+142 Foo
+```
 
 #### Example
 
@@ -140,33 +150,49 @@ Toggles the cursor blink.
 toggleCursorBlink [on|off]
 ```
 
+### Management commands
+
+#### disconnect
+
+Informs the vendor that the consumer is disconnecting; this will be the last message sent by the consumer this session. Unlike draw commands, an acknowledgement is not _required_ from the vendor; it may be sent without consequence, but likely will not be recieved by anyone.
+
 ### Full example transcript
 
-Demonstrating the entirety  of traffic sent when running the [hello-world](x) example.
+Demonstrating the entirety  of traffic sent when running the [`hello-world`](https://github.com/sdd-protocol/javascript-consumer#example-hello-world) JavaScript example.
 
 ```
 $ redis-cli --csv -h <redacted> 'psubscribe' 'sddpExample*'
-"pmessage","sddpExample*","sddpExample:ctrl-init","sddp.ConsumerA request sddp.Display1 3"
+"pmessage","sddpExample*","sddpExample:ctrl-init","sddp.ConsumerA request sddp.Display1 4"
 "pmessage","sddpExample*","sddpExample:ctrl-init:request:resp","sddp.Display1 ok sddp.ConsumerA"
 "pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA","1 clear"
-"pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA","2 writeat 10 1 Hello"
-"pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA","3 writeat 11 2 World!"
+"pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA","2 writeat 3 0 Hello"
+"pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA","3 writeat 4 1 World!"
 "pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA:ack","1"
+"pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA","4 writeat 10 3 6:21:14 PM"
 "pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA:ack","2"
 "pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA:ack","3"
+"pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA:ack","4"
+"pmessage","sddpExample*","sddpExample:estab:sddp.Display1|sddp.ConsumerA","5 disconnect"
 ```
+
+On an [LCM2004A](https://github.com/sdd-protocol/arduino-vendor/blob/main/interfaces/LCM2004A_I2C.h) 4x20 character display, execution of the above would result in:
+
+![`hello-world` executed on an LCM2004A 4x20 character display (white text on blue background)](https://sddp.electricsheep.co/hw1.png)
 
 ## Change History
 
-| Version | Release Date | Change Highlights
+| Version | Release Date | Functional Changes
 |-|-|-|
+| 4 | May 25 2021 | Add `disconnect`, `ack` message optional responses |
 | 3 | May 3 2021 | First public release |
 | 2 | Not released ||
 | 1 | Not released ||
 
 ## `TODO`
 
-[ ] Optional capability negotiation
+- [ ] Capability negotiation
+  - [ ] Compression (non-ASCII encoding?)
+- [ ] Vendor inputs
 
 ## Notes, caveats & errata
 
@@ -174,7 +200,7 @@ As of this version, the transport layer is *assumed* to be Redis pub/sub and acc
 
 ### Authors
 
-* Ryan Joseph, [Electric Sheep Co.][8]
+* Ryan Joseph, [Electric Sheep Co.](https://electricsheep.co)
 
 ### License
 
